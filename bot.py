@@ -9,10 +9,12 @@ import asyncio
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Environment variables
-API_ID = int(os.environ.get('22580205'))
-API_HASH = os.environ.get('0925158a403a28fce3f3f46eca72bc99')
-BOT_TOKEN = os.environ.get('8168429266:AAEemf15r7i7iQxO6nn45nIg2odU3QjbY4M')
+# Hardcoded Telegram API credentials
+API_ID = 22580205
+API_HASH = '0925158a403a28fce3f3f46eca72bc99'
+BOT_TOKEN = '8168429266:AAEemf15r7i7iQxO6nn45nIg2odU3QjbY4M'
+
+# Environment variable for Heroku app URL
 APP_NAME = os.environ.get('APP_NAME')  # e.g., https://your-app-name.herokuapp.com
 PORT = int(os.environ.get('PORT', '8443'))
 
