@@ -4,6 +4,8 @@ from telethon.tl.functions.channels import EditBannedRequest
 from telethon.tl.types import ChatBannedRights
 import logging
 import asyncio
+import signal
+import sys
 
 # Enable logging
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
@@ -14,12 +16,8 @@ API_ID = 22580205
 API_HASH = '0925158a403a28fce3f3f46eca72bc99'
 BOT_TOKEN = '8168429266:AAEemf15r7i7iQxO6nn45nIg2odU3QjbY4M'
 
-# Environment variable for Heroku app URL
-APP_NAME = os.environ.get('APP_NAME')  # e.g., https://your-app-name.herokuapp.com
-PORT = int(os.environ.get('PORT', '8443'))
-
 # Initialize Telethon client
-client = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
+client = TelegramClient('bot', API_ID, API_HASH)
 
 # Store pending join requests (chat_id -> list of user_ids)
 pending_requests = {}
@@ -50,7 +48,7 @@ async def accept_all(event):
 
     # Check if sender is an admin
     chat_entity = await client.get_entity(chat.id)
-    admins = await client.get_participants(chat_entity, filter=ChatParticipantsAdmins)
+    admins = await client.get_participants(chat_entity, filter=lambda x: x.is_admin)
     if not any(admin.id == sender.id for admin in admins):
         await event.reply("Only group admins can use this command.")
         return
@@ -93,7 +91,7 @@ async def reject_all(event):
 
     # Check if sender is an admin
     chat_entity = await client.get_entity(chat.id)
-    admins = await client.get_participants(chat_entity, filter=ChatParticipantsAdmins)
+    admins = await client.get_participants(chat_entity, filter=lambda x: x.is_admin)
     if not any(admin.id == sender.id for admin in admins):
         await event.reply("Only group admins can use this command.")
         return
@@ -123,17 +121,34 @@ async def reject_all(event):
         logger.error(f"Error rejecting join requests: {e}")
         await event.reply("An error occurred while rejecting join requests.")
 
+# Signal handler for graceful shutdown
+def handle_shutdown(loop):
+    tasks = [task for task in asyncio.all_tasks(loop) if task is not asyncio.current_task()]
+    for task in tasks:
+        task.cancel()
+    loop.run_until_complete(loop.shutdown_asyncgens())
+    loop.close()
+
 async def main():
     # Start the client
     logger.info("Bot is starting...")
-    await client.start()
+    await client.start(bot_token=BOT_TOKEN)
     
-    # Set webhook for Heroku
-    webhook_url = f"{APP_NAME}/{BOT_TOKEN}"
-    await client.set_webhook(webhook_url)
-    
-    # Keep the bot running
+    # Run the client with polling
     await client.run_until_disconnected()
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    # Create and configure the event loop
+    loop = asyncio.get_event_loop()
+    
+    # Set up signal handlers for graceful shutdown
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        loop.add_signal_handler(sig, handle_shutdown, loop)
+    
+    try:
+        loop.run_until_complete(main())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        loop.run_until_complete(client.disconnect())
+        loop.close()
