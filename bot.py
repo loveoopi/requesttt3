@@ -1,7 +1,7 @@
 import os
 from telethon import TelegramClient, events
 from telethon.tl.functions.channels import EditBannedRequest
-from telethon.tl.types import ChatBannedRights
+from telethon.tl.types import ChatBannedRights, ChannelParticipantsAdmins
 import logging
 import asyncio
 import signal
@@ -48,7 +48,7 @@ async def accept_all(event):
 
     # Check if sender is an admin
     chat_entity = await client.get_entity(chat.id)
-    admins = await client.get_participants(chat_entity, filter=lambda x: x.is_admin)
+    admins = await client.get_participants(chat_entity, filter=ChannelParticipantsAdmins)
     if not any(admin.id == sender.id for admin in admins):
         await event.reply("Only group admins can use this command.")
         return
@@ -91,7 +91,7 @@ async def reject_all(event):
 
     # Check if sender is an admin
     chat_entity = await client.get_entity(chat.id)
-    admins = await client.get_participants(chat_entity, filter=lambda x: x.is_admin)
+    admins = await client.get_participants(chat_entity, filter=ChannelParticipantsAdmins)
     if not any(admin.id == sender.id for admin in admins):
         await event.reply("Only group admins can use this command.")
         return
